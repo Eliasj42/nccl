@@ -10,13 +10,6 @@
 #include <iostream>
 #include <fstream>
 
-#ifndef COUNTER_INIT_H
-#define COUNTER_INIT_H
-
-int globalCounter_ = 0;
-
-#endif
-
 NCCL_API(ncclResult_t, ncclAllReduce, const void* sendbuff, void* recvbuff, size_t count,
     ncclDataType_t datatype, ncclRedOp_t op, ncclComm* comm, cudaStream_t stream);
 ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
@@ -29,9 +22,7 @@ ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
   Json::Value root;
   std::string errs;
   reader.parse(jsonData, root);
-  std::cout << "The value of myVariable is: " << root[std::to_string(globalCounter_)].asInt() << std::endl;
   int sleep_time = root[std::to_string(globalCounter_)].asInt();
-  //int sleep_time = globalCounter_;
 
   sleep(sleep_time); 
   ncclResult_t ret = ncclSuccess;

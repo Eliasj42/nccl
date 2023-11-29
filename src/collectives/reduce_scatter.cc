@@ -5,27 +5,26 @@
  ************************************************************************/
 
 #include "enqueue.h"
-#include "collectives.h"
 #include "nccl.h"
+#include "json.h"
+#include "collectives.h"
+#include <fstream>
 
 NCCL_API(ncclResult_t, ncclReduceScatter, const void* sendbuff, void* recvbuff, size_t recvcount,
     ncclDataType_t datatype, ncclRedOp_t op, ncclComm* comm, cudaStream_t stream);
 ncclResult_t ncclReduceScatter(const void* sendbuff, void* recvbuff, size_t recvcount,
     ncclDataType_t datatype, ncclRedOp_t op, ncclComm* comm, cudaStream_t stream) {
-  struct NvtxParamsReduceScatter {
-    size_t bytes;
-    ncclRedOp_t op;
-  };
-  constexpr nvtxPayloadSchemaEntry_t ReduceScatterSchema[] = {
-    {0, NVTX_PAYLOAD_ENTRY_TYPE_SIZE, "Message size [bytes]"},
-    {0, NVTX_PAYLOAD_ENTRY_NCCL_REDOP, "Reduction operation", nullptr, 0,
-      offsetof(NvtxParamsReduceScatter, op)}
-  };
-  NvtxParamsReduceScatter payload{recvcount * ncclTypeSize(datatype), op};
-  NVTX3_FUNC_WITH_PARAMS(ReduceScatter, ReduceScatterSchema, payload)
+  globalCounter_++;
+  std::ifstream inputFile("data.json");
+  std::string jsonData((std::istreambuf_iterator<char>(inputFile)),
+                         std::istreambuf_iterator<char>());
+  Json::Reader reader;
+  Json::Value root;
+  std::string errs;
+  reader.parse(jsonData, root);
+  int sleep_time = root[std::to_string(globalCounter_)].asInt();
 
-  struct ncclInfo info = { ncclFuncReduceScatter, "ReduceScatter",
-    sendbuff, recvbuff, recvcount, datatype, op, 0, comm, stream, /* Args */
-    REDUCESCATTER_CHUNKSTEPS, REDUCESCATTER_SLICESTEPS };
-  return ncclEnqueueCheck(&info);
+  sleep(sleep_time); 
+  ncclResult_t ret = ncclSuccess;
+  return ret;
 }

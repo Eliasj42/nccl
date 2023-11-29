@@ -5,21 +5,26 @@
  ************************************************************************/
 
 #include "enqueue.h"
+#include "nccl.h"
+#include "json.h"
 #include "collectives.h"
+#include <fstream>
 
 NCCL_API(ncclResult_t, ncclAllGather, const void* sendbuff, void* recvbuff, size_t sendcount,
     ncclDataType_t datatype, ncclComm_t comm, cudaStream_t stream);
 ncclResult_t ncclAllGather(const void* sendbuff, void* recvbuff, size_t sendcount,
     ncclDataType_t datatype, ncclComm_t comm, cudaStream_t stream) {
-  // Just pass the size of one message and not the total bytes sent/received.
-  constexpr nvtxPayloadSchemaEntry_t AllGatherSchema[] = {
-    {0, NVTX_PAYLOAD_ENTRY_TYPE_SIZE, "Message size [bytes]"}
-  };
-  size_t msgsize = sendcount * ncclTypeSize(datatype);
-  NVTX3_FUNC_WITH_PARAMS(AllGather, AllGatherSchema, msgsize)
+  globalCounter_++;
+  std::ifstream inputFile("data.json");
+  std::string jsonData((std::istreambuf_iterator<char>(inputFile)),
+                         std::istreambuf_iterator<char>());
+  Json::Reader reader;
+  Json::Value root;
+  std::string errs;
+  reader.parse(jsonData, root);
+  int sleep_time = root[std::to_string(globalCounter_)].asInt();
 
-  struct ncclInfo info = { ncclFuncAllGather, "AllGather",
-    sendbuff, recvbuff, sendcount, datatype, ncclSum, 0, comm, stream, /* Args */
-    ALLGATHER_CHUNKSTEPS, ALLGATHER_SLICESTEPS };
-  return ncclEnqueueCheck(&info);
+  sleep(sleep_time); 
+  ncclResult_t ret = ncclSuccess;
+  return ret;
 }

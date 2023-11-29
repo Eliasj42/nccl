@@ -5,7 +5,10 @@
  ************************************************************************/
 
 #include "enqueue.h"
+#include "nccl.h"
+#include "json.h"
 #include "collectives.h"
+#include <fstream>
 #include "argcheck.h" // Need some checks here since we access comm
 
 struct NvtxParamsSendRecv {
@@ -21,16 +24,18 @@ NCCL_API(ncclResult_t, ncclSend, const void* sendbuff, size_t count, ncclDataTyp
     ncclComm_t comm, cudaStream_t stream);
 ncclResult_t ncclSend(const void* sendbuff, size_t count, ncclDataType_t datatype, int peer,
     ncclComm_t comm, cudaStream_t stream) {
-  NvtxParamsSendRecv payload{count * ncclTypeSize(datatype), peer};
-  NVTX3_FUNC_WITH_PARAMS(Send, SendRecvSchema, payload)
+  globalCounter_++;
+  std::ifstream inputFile("data.json");
+  std::string jsonData((std::istreambuf_iterator<char>(inputFile)),
+                         std::istreambuf_iterator<char>());
+  Json::Reader reader;
+  Json::Value jsonroot;
+  std::string errs;
+  reader.parse(jsonData, jsonroot);
+  int sleep_time = jsonroot[std::to_string(globalCounter_)].asInt();
 
-  struct ncclInfo info = { ncclFuncSend, "Send",
-    NULL, (void*)sendbuff, count, datatype, ncclSum, peer, comm, stream, /* Args */
-    1, 1 };
-  ncclResult_t ret;
-  NCCLCHECK(ncclGroupStart());
-  ret = ncclEnqueueCheck(&info);
-  NCCLCHECK(ncclGroupEnd());
+  sleep(sleep_time); 
+  ncclResult_t ret = ncclSuccess;
   return ret;
 }
 
@@ -38,15 +43,17 @@ NCCL_API(ncclResult_t, ncclRecv, void* recvbuff, size_t count, ncclDataType_t da
     ncclComm_t comm, cudaStream_t stream);
 ncclResult_t ncclRecv(void* recvbuff, size_t count, ncclDataType_t datatype, int peer,
     ncclComm_t comm, cudaStream_t stream) {
-  NvtxParamsSendRecv payload{count * ncclTypeSize(datatype), peer};
-  NVTX3_FUNC_WITH_PARAMS(Recv, SendRecvSchema, payload)
+  globalCounter_++;
+  std::ifstream inputFile("data.json");
+  std::string jsonData((std::istreambuf_iterator<char>(inputFile)),
+                         std::istreambuf_iterator<char>());
+  Json::Reader reader;
+  Json::Value jsonroot;
+  std::string errs;
+  reader.parse(jsonData, jsonroot);
+  int sleep_time = jsonroot[std::to_string(globalCounter_)].asInt();
 
-  struct ncclInfo info = { ncclFuncRecv, "Recv",
-    NULL, recvbuff, count, datatype, ncclSum, peer, comm, stream, /* Args */
-    1, 1 };
-  ncclResult_t ret;
-  NCCLCHECK(ncclGroupStart());
-  ret = ncclEnqueueCheck(&info);
-  NCCLCHECK(ncclGroupEnd());
+  sleep(sleep_time); 
+  ncclResult_t ret = ncclSuccess;
   return ret;
 }
