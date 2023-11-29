@@ -3,6 +3,12 @@
  *
  * See LICENSE.txt for license information
  ************************************************************************/
+#ifndef COUNTER_H
+#define COUNTER_H
+
+extern int globalCounter_;
+
+#endif // COUNTER_H
 
 #ifndef NCCL_H_
 #define NCCL_H_

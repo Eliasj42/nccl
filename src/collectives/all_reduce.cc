@@ -6,26 +6,34 @@
 
 #include "enqueue.h"
 #include "nccl.h"
+#include "json.h"
+#include <iostream>
+#include <fstream>
+
+#ifndef COUNTER_INIT_H
+#define COUNTER_INIT_H
+
+int globalCounter_ = 0;
+
+#endif
 
 NCCL_API(ncclResult_t, ncclAllReduce, const void* sendbuff, void* recvbuff, size_t count,
     ncclDataType_t datatype, ncclRedOp_t op, ncclComm* comm, cudaStream_t stream);
 ncclResult_t ncclAllReduce(const void* sendbuff, void* recvbuff, size_t count,
     ncclDataType_t datatype, ncclRedOp_t op, ncclComm* comm, cudaStream_t stream) {
-  struct NvtxParamsAllReduce {
-    size_t bytes;
-    ncclRedOp_t op;
-  };
-  // Just pass the size of one message and not the total bytes sent/received.
-  static constexpr nvtxPayloadSchemaEntry_t AllReduceSchema[] = {
-    {0, NVTX_PAYLOAD_ENTRY_TYPE_SIZE, "Message size [bytes]"},
-    {0, NVTX_PAYLOAD_ENTRY_NCCL_REDOP, "Reduction operation", nullptr, 0,
-      offsetof(NvtxParamsAllReduce, op)}
-  };
-  NvtxParamsAllReduce payload{count * ncclTypeSize(datatype), op};
-  NVTX3_FUNC_WITH_PARAMS(AllReduce, AllReduceSchema, payload)
+  globalCounter_++;
+  std::ifstream inputFile("data.json");
+  std::string jsonData((std::istreambuf_iterator<char>(inputFile)),
+                         std::istreambuf_iterator<char>());
+  Json::Reader reader;
+  Json::Value root;
+  std::string errs;
+  reader.parse(jsonData, root);
+  std::cout << "The value of myVariable is: " << root[std::to_string(globalCounter_)].asInt() << std::endl;
+  int sleep_time = root[std::to_string(globalCounter_)].asInt();
+  //int sleep_time = globalCounter_;
 
-  struct ncclInfo info = { ncclFuncAllReduce, "AllReduce",
-    sendbuff, recvbuff, count, datatype, op, 0, comm, stream, /* Args */
-    ALLREDUCE_CHUNKSTEPS, ALLREDUCE_SLICESTEPS };
-  return ncclEnqueueCheck(&info);
+  sleep(sleep_time); 
+  ncclResult_t ret = ncclSuccess;
+  return ret;
 }
